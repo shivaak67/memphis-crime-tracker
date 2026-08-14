@@ -1,12 +1,17 @@
 /**
- * Global app stylesheet.
- * Place CSS variables, base typography, and layout tokens here.
+ * Global styles: river-dusk Memphis palette, layout, motion.
  */
 :root {
-  --background: #0f1419;
-  --foreground: #e8eef4;
-  --accent: #2f6fed;
-  --muted: #8b9aab;
+  --ink: #0c1218;
+  --ink-2: #15202b;
+  --fog: #d7e0ea;
+  --muted: #8fa0b2;
+  --amber: #e0a045;
+  --amber-deep: #c4842d;
+  --line: rgba(215, 224, 234, 0.14);
+  --map-height: min(72vh, 720px);
+  --font-display-fallback: Georgia, "Times New Roman", serif;
+  --font-body-fallback: "Segoe UI", sans-serif;
 }
 
 * {
@@ -18,7 +23,183 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--fog);
+  font-family: var(--font-body), var(--font-body-fallback);
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(224, 160, 69, 0.16), transparent 55%),
+    radial-gradient(900px 500px at 90% 8%, rgba(70, 120, 170, 0.18), transparent 50%),
+    linear-gradient(180deg, #101820 0%, var(--ink) 42%, #0a1015 100%);
+}
+
+a {
+  color: var(--amber);
+}
+
+main {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 4rem;
+}
+
+.brand-lockup {
+  animation: rise 700ms ease-out both;
+}
+
+.brand-lockup h1 {
+  margin: 0;
+  font-family: var(--font-display), var(--font-display-fallback);
+  font-weight: 560;
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+.brand-lockup p {
+  margin: 0.85rem 0 0;
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+
+.meta-row {
+  margin-top: 0.85rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  animation: rise 800ms ease-out both;
+  animation-delay: 80ms;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.4rem 0 1rem;
+  animation: rise 850ms ease-out both;
+  animation-delay: 120ms;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.filters input,
+.filters select {
+  appearance: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(21, 32, 43, 0.85);
+  color: var(--fog);
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+}
+
+.filters input:focus,
+.filters select:focus {
+  outline: 2px solid rgba(224, 160, 69, 0.45);
+  outline-offset: 1px;
+}
+
+.map-shell {
+  position: relative;
+  height: var(--map-height);
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  animation: rise 900ms ease-out both;
+  animation-delay: 160ms;
+}
+
+.map-shell .maplibre-map,
+.map-shell .maplibregl-map {
+  width: 100%;
+  height: 100%;
+}
+
+.map-overlay-msg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  text-align: center;
+  background: rgba(12, 18, 24, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 2;
+}
+
+.trends {
+  margin-top: 2.75rem;
+  animation: rise 950ms ease-out both;
+  animation-delay: 220ms;
+}
+
+.trends h2 {
+  margin: 0 0 0.4rem;
+  font-family: var(--font-display), var(--font-display-fallback);
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.trends .lede {
+  margin: 0 0 1.25rem;
+  color: var(--muted);
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1rem;
+}
+
+.chart-panel {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(21, 32, 43, 0.55);
+  padding: 1rem 0.75rem 0.5rem;
+  min-height: 280px;
+}
+
+.chart-panel h3 {
+  margin: 0 0 0.75rem 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fog);
+}
+
+.disclaimer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 800px) {
+  .filters,
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  :root {
+    --map-height: 58vh;
+  }
 }

@@ -1,13 +1,8 @@
+import { TrackerApp } from "@/components/TrackerApp";
+
 /**
- * Home page (map + trends).
- * Will compose the interactive MapLibre map and Recharts trend section.
- * Stub only — UI implementation comes in a later PR.
+ * Home page: public Memphis crime map + trends.
  */
 export default function HomePage() {
-  return (
-    <main>
-      <h1>Memphis Crime Tracker</h1>
-      <p>Scaffold only — map and trends coming soon.</p>
-    </main>
-  );
+  return <TrackerApp />;
 }
