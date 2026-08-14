@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Fraunces, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 
-/**
- * Root layout for every page.
- * Sets shared HTML shell, metadata, and global styles.
- * No auth providers — the app is public/read-only.
- */
+const display = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+});
+
+const body = Source_Sans_3({
+  subsets: ["latin"],
+  variable: "--font-body",
+});
+
 export const metadata: Metadata = {
   title: "Memphis Crime Tracker",
   description:
@@ -15,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body>{children}</body>
     </html>
   );
