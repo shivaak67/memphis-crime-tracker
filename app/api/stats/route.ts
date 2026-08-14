@@ -1,14 +1,40 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  getLastSuccessfulSyncAt,
+  getStats,
+} from "@/lib/incident-queries";
+import { parseDateRangeFilters } from "@/lib/query-params";
 
 /**
  * GET /api/stats
- * Returns aggregations for trend charts (time series, category breakdown).
- * Stub only — aggregation logic comes later.
+ * Returns aggregations for trend charts.
+ *
+ * Query params:
+ * - from, to: YYYY-MM-DD (default from = 30 days ago)
+ * - category: optional exact category filter
  */
-export async function GET() {
-  return NextResponse.json({
-    series: [],
-    byCategory: [],
-    message: "Stub: stats aggregation not implemented yet",
-  });
+export async function GET(request: NextRequest) {
+  try {
+    const filters = parseDateRangeFilters(request.nextUrl.searchParams);
+    const [stats, lastSyncedAt] = await Promise.all([
+      getStats(filters),
+      getLastSuccessfulSyncAt(),
+    ]);
+
+    return NextResponse.json({
+      series: stats.series,
+      byCategory: stats.byCategory,
+      total: stats.total,
+      lastSyncedAt,
+      filters: {
+        from: filters.from?.toISOString() ?? null,
+        to: filters.to?.toISOString() ?? null,
+        category: filters.category,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const status = message.includes("DATABASE_URL") ? 503 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
 }
