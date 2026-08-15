@@ -688,8 +688,9 @@ main {
   color: #d64545;
 }
 
-
-
-
-
+.map-shell .maplibregl-cooperative-gesture-screen {
+  background: rgba(12, 18, 24, 0.72);
+  color: #f4f7fb;
+  font-family: var(--font-body), var(--font-body-fallback);
+}
 
