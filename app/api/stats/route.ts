@@ -34,7 +34,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const cause =
+      err instanceof Error && err.cause ? String(err.cause) : undefined;
     const status = message.includes("DATABASE_URL") ? 503 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json(
+      { error: message, cause },
+      { status },
+    );
   }
 }

@@ -3,8 +3,8 @@ import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "@/drizzle/schema";
 
 /**
- * Database client (Neon Postgres via Drizzle).
- * Single doorway the rest of the app uses to read/write crime data.
+ * Database client (Neon Postgres via Drizzle HTTP driver).
+ * Use this with Neon pooled connection strings (*-pooler*).
  */
 
 export type Db = ReturnType<typeof createDb>;
