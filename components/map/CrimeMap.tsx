@@ -111,8 +111,6 @@ export function CrimeMap({
       },
       center: MEMPHIS,
       zoom: 10.4,
-      // Let the page scroll; require Ctrl/Cmd + scroll (or +/-) to zoom.
-      cooperativeGestures: true,
     });
 
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
