@@ -8,6 +8,7 @@ import {
   crimeGroupForCategory,
   type CrimeGroup,
 } from "@/lib/crime-groups";
+import { buildIncidentPopupHtml } from "@/lib/incident-popup";
 import type { Incident } from "@/lib/types";
 
 /**
@@ -229,16 +230,43 @@ export function CrimeMap({ incidents, loading, error }: Props) {
         return;
       }
 
-      const reportedAt = best.reportedAt
-        ? new Date(best.reportedAt).toLocaleString()
-        : "";
       popupRef.current?.remove();
-      popupRef.current = new Popup({ offset: 12 })
+      const popup = new Popup({
+        offset: 16,
+        maxWidth: "300px",
+        className: "incident-map-popup",
+        closeButton: true,
+      })
         .setLngLat([best.lng, best.lat])
         .setHTML(
-          `<strong>${best.category}</strong><br/>${best.crimeType}<br/><span>${reportedAt}</span>`,
+          buildIncidentPopupHtml({
+            id: best.id,
+            category: best.category,
+            crimeType: best.crimeType,
+            reportedAt: best.reportedAt,
+            lat: best.lat,
+            lng: best.lng,
+          }),
         )
         .addTo(map);
+
+      popupRef.current = popup;
+
+      const root = popup.getElement();
+      const detailsBtn = root?.querySelector(".incident-popup-details");
+      detailsBtn?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const targetId = (event.currentTarget as HTMLElement).dataset
+          .detailsTarget;
+        if (!targetId) return;
+        const panel = root?.querySelector(`#${CSS.escape(targetId)}`);
+        if (!(panel instanceof HTMLElement)) return;
+        const open = panel.hasAttribute("hidden");
+        if (open) panel.removeAttribute("hidden");
+        else panel.setAttribute("hidden", "");
+        (event.currentTarget as HTMLElement).classList.toggle("is-open", open);
+      });
     };
 
     map.on("load", () => {
