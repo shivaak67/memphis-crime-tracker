@@ -106,6 +106,54 @@ main {
   outline-offset: 1px;
 }
 
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1.15rem;
+  animation: rise 880ms ease-out both;
+  animation-delay: 140ms;
+}
+
+.summary-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(21, 32, 43, 0.55);
+  padding: 0.9rem 1rem 1rem;
+  min-height: 5.4rem;
+}
+
+.summary-card-label {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.summary-card-value {
+  margin: 0.45rem 0 0;
+  font-family: var(--font-display), var(--font-display-fallback);
+  font-size: clamp(1.15rem, 2.2vw, 1.55rem);
+  line-height: 1.2;
+  color: var(--fog);
+  letter-spacing: -0.02em;
+}
+
+.summary-card-value.is-down {
+  color: #7dcea0;
+}
+
+.summary-card-value.is-up {
+  color: #e0a045;
+}
+
+.summary-card-value.is-flat,
+.summary-card-value.is-muted {
+  color: var(--muted);
+}
+
 .map-shell {
   position: relative;
   height: var(--map-height);
@@ -205,8 +253,13 @@ main {
 
 @media (max-width: 800px) {
   .filters,
-  .chart-grid {
+  .chart-grid,
+  .summary-cards {
     grid-template-columns: 1fr;
+  }
+
+  .summary-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   :root {
