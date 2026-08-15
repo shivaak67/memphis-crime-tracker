@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CrimeMap } from "@/components/map/CrimeMap";
+import { CrimeMap, type MapDisplayMode } from "@/components/map/CrimeMap";
+import type { FilterState } from "@/components/filters/IncidentFilters";
 import {
-  IncidentFilters,
-  type FilterState,
-} from "@/components/filters/IncidentFilters";
+  TrackerSidebar,
+  type SidebarFilters,
+} from "@/components/sidebar/TrackerSidebar";
 import { SummaryCards } from "@/components/summary/SummaryCards";
 import { TrendsCharts } from "@/components/trends/TrendsCharts";
+import { CRIME_GROUPS, crimeGroupIdForCategory } from "@/lib/crime-groups";
 import { daysAgoInput, todayInput } from "@/lib/dates";
 import type {
   CategoryCount,
@@ -38,49 +40,42 @@ function buildQuery(filters: FilterState): string {
   return params.toString();
 }
 
+const ALL_GROUPS = CRIME_GROUPS.map((group) => group.id);
+
 export function TrackerApp() {
-  const [filters, setFilters] = useState<FilterState>({
+  const [filters, setFilters] = useState<SidebarFilters>({
     from: daysAgoInput(30),
     to: todayInput(),
     category: "",
+    groups: ALL_GROUPS,
   });
+  const [mapMode, setMapMode] = useState<MapDisplayMode>("incidents");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [series, setSeries] = useState<StatsSeriesPoint[]>([]);
   const [byCategory, setByCategory] = useState<CategoryCount[]>([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<StatsSummary | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
-  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const query = useMemo(() => buildQuery(filters), [filters]);
+  const query = useMemo(
+    () =>
+      buildQuery({
+        from: filters.from,
+        to: filters.to,
+        category: filters.category,
+      }),
+    [filters.from, filters.to, filters.category],
+  );
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadCategories() {
-      try {
-        const params = new URLSearchParams();
-        if (filters.from) params.set("from", filters.from);
-        if (filters.to) params.set("to", filters.to);
-        const res = await fetch(`/api/stats?${params.toString()}`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) return;
-        const json = (await res.json()) as StatsResponse;
-        const names = (json.byCategory ?? [])
-          .map((row) => row.category)
-          .filter((name) => name && name !== "UNKNOWN");
-        setCategories(names);
-      } catch {
-        // Keep prior category list if this refresh fails.
-      }
-    }
-
-    void loadCategories();
-    return () => controller.abort();
-  }, [filters.from, filters.to]);
+  const visibleIncidents = useMemo(() => {
+    const allowed = new Set(filters.groups);
+    return incidents.filter((incident) =>
+      allowed.has(crimeGroupIdForCategory(incident.category)),
+    );
+  }, [incidents, filters.groups]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -136,46 +131,51 @@ export function TrackerApp() {
   }, [query]);
 
   return (
-    <main>
-      <header className="brand-lockup">
-        <h1>Memphis Crime Tracker</h1>
-        <p>
-          Public map and trends from Memphis Police Department incident reports.
-          No account needed.
+    <main className={"app-shell" + (sidebarCollapsed ? " is-sidebar-collapsed" : "")}>
+      <TrackerSidebar
+        filters={filters}
+        mapMode={mapMode}
+        incidentCount={visibleIncidents.length}
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+        onFiltersChange={setFilters}
+        onMapModeChange={setMapMode}
+      />
+
+      <div className="app-stage">
+        <p className="meta-row stage-meta">
+          {lastSyncedAt
+            ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
+            : "Waiting for first data sync"}
+          {" · "}
+          Showing {visibleIncidents.length.toLocaleString()} map points
         </p>
-      </header>
 
-      <p className="meta-row">
-        {lastSyncedAt
-          ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
-          : "Waiting for first data sync"}
-        {" · "}
-        Showing {incidents.length.toLocaleString()} map points
-      </p>
+        <SummaryCards summary={summary} loading={loading} />
 
-      <IncidentFilters
-        value={filters}
-        categories={categories}
-        onChange={setFilters}
-      />
+        <CrimeMap
+          incidents={visibleIncidents}
+          loading={loading}
+          error={error}
+          mode={mapMode}
+          onModeChange={setMapMode}
+          showViewToggle={false}
+        />
 
-      <SummaryCards summary={summary} loading={loading} />
+        <TrendsCharts
+          series={series}
+          byCategory={byCategory}
+          total={total}
+          loading={loading}
+          error={error}
+        />
 
-      <CrimeMap incidents={incidents} loading={loading} error={error} />
-
-      <TrendsCharts
-        series={series}
-        byCategory={byCategory}
-        total={total}
-        loading={loading}
-        error={error}
-      />
-
-      <p className="disclaimer">
-        Data comes from public MPD incident reports. Counts may change as cases
-        are updated, and may not match official FBI or TBI index totals. This
-        site is for public awareness, not official statistics.
-      </p>
+        <p className="disclaimer">
+          Data comes from public MPD incident reports. Counts may change as
+          cases are updated, and may not match official FBI or TBI index totals.
+          This site is for public awareness, not official statistics.
+        </p>
+      </div>
     </main>
   );
 }

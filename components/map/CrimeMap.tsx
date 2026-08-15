@@ -24,6 +24,10 @@ type Props = {
   incidents: Incident[];
   loading: boolean;
   error: string | null;
+  /** Controlled map display mode (sidebar owns this in the app shell). */
+  mode?: MapDisplayMode;
+  onModeChange?: (mode: MapDisplayMode) => void;
+  showViewToggle?: boolean;
 };
 
 type Point = {
@@ -61,17 +65,30 @@ function rgba(rgb: [number, number, number], alpha: number): string {
   return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
 }
 
-export function CrimeMap({ incidents, loading, error }: Props) {
+export function CrimeMap({
+  incidents,
+  loading,
+  error,
+  mode: modeProp,
+  onModeChange,
+  showViewToggle = true,
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const popupRef = useRef<Popup | null>(null);
   const pointsRef = useRef<Point[]>([]);
-  const modeRef = useRef<MapDisplayMode>("incidents");
-  const [mode, setMode] = useState<MapDisplayMode>("incidents");
+  const [internalMode, setInternalMode] = useState<MapDisplayMode>("incidents");
+  const mode = modeProp ?? internalMode;
+  const modeRef = useRef<MapDisplayMode>(mode);
 
   pointsRef.current = toPoints(incidents);
   modeRef.current = mode;
+
+  const setMode = (next: MapDisplayMode) => {
+    if (onModeChange) onModeChange(next);
+    if (modeProp === undefined) setInternalMode(next);
+  };
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -314,7 +331,7 @@ export function CrimeMap({ incidents, loading, error }: Props) {
         </div>
       ) : null}
 
-      {!overlay ? (
+      {!overlay && showViewToggle ? (
         <div className="map-view-toggle" role="group" aria-label="Map display">
           <button
             type="button"
