@@ -181,6 +181,97 @@ main {
 }
 
 
+
+.map-legend {
+  position: absolute;
+  left: 0.85rem;
+  bottom: 3.4rem;
+  z-index: 2;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(12, 18, 24, 0.82);
+  backdrop-filter: blur(6px);
+  color: var(--fog);
+  font-size: 0.78rem;
+}
+
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.map-legend-swatch {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.map-view-toggle {
+  position: absolute;
+  left: 50%;
+  bottom: 0.85rem;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(12, 18, 24, 0.88);
+  backdrop-filter: blur(6px);
+}
+
+.map-view-toggle button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.map-view-toggle button.is-active {
+  background: rgba(215, 224, 234, 0.12);
+  color: var(--fog);
+}
+
+.map-toggle-dot,
+.map-toggle-heat {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.map-toggle-dot {
+  background: #9aa8b8;
+}
+
+.map-toggle-heat {
+  background: radial-gradient(circle at 35% 35%, #ffd36a, #ff4d2e 70%);
+}
+
+@media (max-width: 800px) {
+  .map-legend {
+    left: 0.55rem;
+    right: 0.55rem;
+    bottom: 3.5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .map-overlay-msg {
   position: absolute;
   inset: 0;
