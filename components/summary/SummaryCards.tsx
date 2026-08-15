@@ -1,5 +1,6 @@
 "use client";
 
+import { titleCaseCategory } from "@/lib/format";
 import type { StatsSummary } from "@/lib/types";
 
 /**
@@ -10,21 +11,6 @@ type Props = {
   summary: StatsSummary | null;
   loading: boolean;
 };
-
-function titleCaseCategory(value: string | null): string {
-  if (!value) return "—";
-  return value
-    .toLowerCase()
-    .split("/")
-    .map((part) =>
-      part
-        .trim()
-        .split(/\s+/)
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" "),
-    )
-    .join("/");
-}
 
 function formatChange(summary: StatsSummary | null): {
   label: string;

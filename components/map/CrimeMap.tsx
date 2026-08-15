@@ -8,6 +8,7 @@ import {
   crimeGroupForCategory,
   type CrimeGroup,
 } from "@/lib/crime-groups";
+import { buildIncidentPopupHtml } from "@/lib/incident-popup";
 import type { Incident } from "@/lib/types";
 
 /**
@@ -97,6 +98,13 @@ export function CrimeMap({ incidents, loading, error }: Props) {
 
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
+
+    // Keep hotspots under MapLibre popups/controls (same stacking context).
+    const hotspot = canvasRef.current;
+    if (hotspot) {
+      const canvasContainer = map.getCanvasContainer();
+      canvasContainer.appendChild(hotspot);
+    }
 
     const drawIncidents = (
       ctx: CanvasRenderingContext2D,
@@ -229,14 +237,23 @@ export function CrimeMap({ incidents, loading, error }: Props) {
         return;
       }
 
-      const reportedAt = best.reportedAt
-        ? new Date(best.reportedAt).toLocaleString()
-        : "";
       popupRef.current?.remove();
-      popupRef.current = new Popup({ offset: 12 })
+      popupRef.current = new Popup({
+        offset: 16,
+        maxWidth: "300px",
+        className: "incident-map-popup",
+        closeButton: true,
+      })
         .setLngLat([best.lng, best.lat])
         .setHTML(
-          `<strong>${best.category}</strong><br/>${best.crimeType}<br/><span>${reportedAt}</span>`,
+          buildIncidentPopupHtml({
+            id: best.id,
+            category: best.category,
+            crimeType: best.crimeType,
+            reportedAt: best.reportedAt,
+            lat: best.lat,
+            lng: best.lng,
+          }),
         )
         .addTo(map);
     };
@@ -257,6 +274,11 @@ export function CrimeMap({ incidents, loading, error }: Props) {
     return () => {
       ro.disconnect();
       popupRef.current?.remove();
+      const hotspotCanvas = canvasRef.current;
+      const shell = containerRef.current?.parentElement;
+      if (hotspotCanvas && shell && hotspotCanvas.parentElement !== shell) {
+        shell.appendChild(hotspotCanvas);
+      }
       map.remove();
       mapRef.current = null;
     };
