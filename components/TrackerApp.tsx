@@ -6,12 +6,14 @@ import {
   IncidentFilters,
   type FilterState,
 } from "@/components/filters/IncidentFilters";
+import { SummaryCards } from "@/components/summary/SummaryCards";
 import { TrendsCharts } from "@/components/trends/TrendsCharts";
 import { daysAgoInput, todayInput } from "@/lib/dates";
 import type {
   CategoryCount,
   Incident,
   StatsSeriesPoint,
+  StatsSummary,
 } from "@/lib/types";
 
 type IncidentsResponse = {
@@ -23,6 +25,7 @@ type StatsResponse = {
   series: StatsSeriesPoint[];
   byCategory: CategoryCount[];
   total: number;
+  summary?: StatsSummary;
   lastSyncedAt: string | null;
   error?: string;
 };
@@ -45,6 +48,7 @@ export function TrackerApp() {
   const [series, setSeries] = useState<StatsSeriesPoint[]>([]);
   const [byCategory, setByCategory] = useState<CategoryCount[]>([]);
   const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState<StatsSummary | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +115,7 @@ export function TrackerApp() {
         setSeries(statsJson.series ?? []);
         setByCategory(statsJson.byCategory ?? []);
         setTotal(statsJson.total ?? 0);
+        setSummary(statsJson.summary ?? null);
         setLastSyncedAt(statsJson.lastSyncedAt ?? null);
       } catch (err) {
         if (controller.signal.aborted) return;
@@ -120,6 +125,7 @@ export function TrackerApp() {
         setSeries([]);
         setByCategory([]);
         setTotal(0);
+        setSummary(null);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -152,6 +158,8 @@ export function TrackerApp() {
         categories={categories}
         onChange={setFilters}
       />
+
+      <SummaryCards summary={summary} loading={loading} />
 
       <CrimeMap incidents={incidents} loading={loading} error={error} />
 

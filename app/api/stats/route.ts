@@ -7,7 +7,7 @@ import { parseDateRangeFilters } from "@/lib/query-params";
 
 /**
  * GET /api/stats
- * Returns aggregations for trend charts.
+ * Returns aggregations for trend charts and summary cards.
  *
  * Query params:
  * - from, to: YYYY-MM-DD (default from = 30 days ago)
@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       series: stats.series,
       byCategory: stats.byCategory,
       total: stats.total,
+      summary: stats.summary,
       lastSyncedAt,
       filters: {
         from: filters.from?.toISOString() ?? null,
