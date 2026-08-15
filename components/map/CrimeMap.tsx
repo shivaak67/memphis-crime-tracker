@@ -1,19 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import {
-  Map,
-  NavigationControl,
-  Popup,
-  type GeoJSONSource,
-  type MapGeoJSONFeature,
-  type MapLayerMouseEvent,
-} from "maplibre-gl";
+import { Map, NavigationControl, Popup } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Incident } from "@/lib/types";
 
 /**
- * Interactive Memphis incident map (MapLibre GL).
+ * Memphis incident map.
+ * Basemap: MapLibre + CARTO. Hotspots: canvas overlay (avoids MapLibre
+ * GeoJSON worker issues under Next.js that left the map empty).
  */
 
 const MEMPHIS: [number, number] = [-90.049, 35.1495];
@@ -24,29 +19,42 @@ type Props = {
   error: string | null;
 };
 
-function toGeoJson(incidents: Incident[]): GeoJSON.FeatureCollection {
-  return {
-    type: "FeatureCollection",
-    features: incidents.map((incident) => ({
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [incident.lng, incident.lat],
-      },
-      properties: {
-        id: incident.id,
-        category: incident.category ?? "Unknown",
-        crimeType: incident.crimeType ?? "",
-        reportedAt: incident.reportedAt,
-      },
-    })),
-  };
+type Point = {
+  id: string;
+  category: string;
+  crimeType: string;
+  reportedAt: string;
+  lng: number;
+  lat: number;
+};
+
+function toPoints(incidents: Incident[]): Point[] {
+  const points: Point[] = [];
+  for (const incident of incidents) {
+    const lat = Number(incident.lat);
+    const lng = Number(incident.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    if (lat === 0 && lng === 0) continue;
+    if (lat < 34.8 || lat > 35.5 || lng < -90.5 || lng > -89.5) continue;
+    points.push({
+      id: incident.id,
+      category: incident.category ?? "Unknown",
+      crimeType: incident.crimeType ?? "",
+      reportedAt: incident.reportedAt,
+      lng,
+      lat,
+    });
+  }
+  return points;
 }
 
 export function CrimeMap({ incidents, loading, error }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const popupRef = useRef<Popup | null>(null);
+  const pointsRef = useRef<Point[]>([]);
+  pointsRef.current = toPoints(incidents);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -62,127 +70,113 @@ export function CrimeMap({ incidents, loading, error }: Props) {
               "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
             ],
             tileSize: 256,
-            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            attribution: "&copy; OpenStreetMap &copy; CARTO",
           },
         },
-        layers: [
-          {
-            id: "osm",
-            type: "raster",
-            source: "osm",
-          },
-        ],
+        layers: [{ id: "osm", type: "raster", source: "osm" }],
       },
       center: MEMPHIS,
       zoom: 10.4,
     });
 
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
-
-    map.on("load", () => {
-      map.addSource("incidents", {
-        type: "geojson",
-        data: toGeoJson([]),
-        cluster: true,
-        clusterMaxZoom: 14,
-        clusterRadius: 42,
-      });
-
-      map.addLayer({
-        id: "clusters",
-        type: "circle",
-        source: "incidents",
-        filter: ["has", "point_count"],
-        paint: {
-          "circle-color": "#e0a045",
-          "circle-radius": [
-            "step",
-            ["get", "point_count"],
-            16,
-            25,
-            22,
-            100,
-            30,
-          ],
-          "circle-opacity": 0.85,
-        },
-      });
-
-      map.addLayer({
-        id: "cluster-count",
-        type: "symbol",
-        source: "incidents",
-        filter: ["has", "point_count"],
-        layout: {
-          "text-field": "{point_count_abbreviated}",
-          "text-size": 12,
-        },
-        paint: {
-          "text-color": "#0c1218",
-        },
-      });
-
-      map.addLayer({
-        id: "unclustered",
-        type: "circle",
-        source: "incidents",
-        filter: ["!", ["has", "point_count"]],
-        paint: {
-          "circle-color": "#7eb6ff",
-          "circle-radius": 5,
-          "circle-stroke-width": 1,
-          "circle-stroke-color": "#0c1218",
-        },
-      });
-    });
-
-    map.on("click", "clusters", async (e: MapLayerMouseEvent) => {
-      const features = map.queryRenderedFeatures(e.point, {
-        layers: ["clusters"],
-      });
-      const clusterId = features[0]?.properties?.cluster_id;
-      const source = map.getSource("incidents") as GeoJSONSource;
-      if (clusterId == null) return;
-      const zoom = await source.getClusterExpansionZoom(clusterId);
-      const coordinates = (features[0].geometry as GeoJSON.Point).coordinates as [number, number];
-      map.easeTo({ center: coordinates, zoom });
-    });
-
-    map.on("click", "unclustered", (e: MapLayerMouseEvent) => {
-      const feature = e.features?.[0] as MapGeoJSONFeature | undefined;
-      if (!feature || feature.geometry.type !== "Point") return;
-      const coordinates = [...feature.geometry.coordinates] as [number, number];
-      const category = String(feature.properties?.category ?? "Unknown");
-      const crimeType = String(feature.properties?.crimeType ?? "");
-      const reportedAt = feature.properties?.reportedAt
-        ? new Date(String(feature.properties.reportedAt)).toLocaleString()
-        : "";
-
-      popupRef.current?.remove();
-      popupRef.current = new Popup({ offset: 12 })
-        .setLngLat(coordinates)
-        .setHTML(
-          `<strong>${category}</strong><br/>${crimeType}<br/><span>${reportedAt}</span>`,
-        )
-        .addTo(map);
-    });
-
-    map.on("mouseenter", "clusters", () => {
-      map.getCanvas().style.cursor = "pointer";
-    });
-    map.on("mouseleave", "clusters", () => {
-      map.getCanvas().style.cursor = "";
-    });
-    map.on("mouseenter", "unclustered", () => {
-      map.getCanvas().style.cursor = "pointer";
-    });
-    map.on("mouseleave", "unclustered", () => {
-      map.getCanvas().style.cursor = "";
-    });
-
     mapRef.current = map;
 
+    const draw = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.max(1, Math.floor(rect.width * dpr));
+      const height = Math.max(1, Math.floor(rect.height * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      const zoom = map.getZoom();
+      const glowR = Math.max(10, Math.min(28, 4 + zoom * 1.6));
+      const coreR = Math.max(3, glowR * 0.28);
+
+      for (const point of pointsRef.current) {
+        const { x, y } = map.project([point.lng, point.lat]);
+        if (x < -40 || y < -40 || x > rect.width + 40 || y > rect.height + 40) {
+          continue;
+        }
+
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, glowR);
+        glow.addColorStop(0, "rgba(255, 59, 59, 0.55)");
+        glow.addColorStop(0.45, "rgba(255, 59, 59, 0.22)");
+        glow.addColorStop(1, "rgba(255, 59, 59, 0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(x, y, glowR, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(x, y, coreR, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 120, 120, 0.95)";
+        ctx.fill();
+        ctx.lineWidth = 1.25;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+        ctx.stroke();
+      }
+    };
+
+    const onClick = (e: { point: { x: number; y: number } }) => {
+      const { x, y } = e.point;
+      let best: Point | null = null;
+      let bestDist = 18;
+      for (const point of pointsRef.current) {
+        const p = map.project([point.lng, point.lat]);
+        const dist = Math.hypot(p.x - x, p.y - y);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = point;
+        }
+      }
+      if (!best) {
+        popupRef.current?.remove();
+        return;
+      }
+
+      const reportedAt = best.reportedAt
+        ? new Date(best.reportedAt).toLocaleString()
+        : "";
+      popupRef.current?.remove();
+      popupRef.current = new Popup({ offset: 12 })
+        .setLngLat([best.lng, best.lat])
+        .setHTML(
+          `<strong>${best.category}</strong><br/>${best.crimeType}<br/><span>${reportedAt}</span>`,
+        )
+        .addTo(map);
+    };
+
+    map.on("load", () => {
+      map.resize();
+      draw();
+    });
+    map.on("render", draw);
+    map.on("click", onClick);
+
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.style.cursor = "pointer";
+    }
+
+    const ro = new ResizeObserver(() => {
+      map.resize();
+      draw();
+    });
+    ro.observe(containerRef.current);
+
     return () => {
+      ro.disconnect();
       popupRef.current?.remove();
       map.remove();
       mapRef.current = null;
@@ -190,17 +184,10 @@ export function CrimeMap({ incidents, loading, error }: Props) {
   }, []);
 
   useEffect(() => {
+    // Trigger a redraw when incident data changes.
     const map = mapRef.current;
     if (!map) return;
-
-    const sync = () => {
-      const source = map.getSource("incidents") as GeoJSONSource | undefined;
-      if (!source) return;
-      source.setData(toGeoJson(incidents));
-    };
-
-    if (map.isStyleLoaded()) sync();
-    else map.once("load", sync);
+    map.triggerRepaint();
   }, [incidents]);
 
   let overlay: string | null = null;
@@ -211,6 +198,7 @@ export function CrimeMap({ incidents, loading, error }: Props) {
   return (
     <section className="map-shell" aria-label="Crime map">
       <div ref={containerRef} className="maplibre-map" />
+      <canvas ref={canvasRef} className="map-hotspot-canvas" aria-hidden />
       {overlay ? <div className="map-overlay-msg">{overlay}</div> : null}
     </section>
   );

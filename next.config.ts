@@ -1,12 +1,10 @@
 import type { NextConfig } from "next";
+import path from "path";
 
-/**
- * Next.js app configuration.
- * Used for build settings, image domains, headers, etc.
- * Keep this lean for the free Vercel Hobby deploy.
- */
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Keep Next from treating C:/Users/shiva as the monorepo root
+  outputFileTracingRoot: path.join(__dirname),
 };
 
 export default nextConfig;

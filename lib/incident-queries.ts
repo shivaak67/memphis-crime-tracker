@@ -12,6 +12,13 @@ import {
   type DateRangeFilters,
 } from "@/lib/query-params";
 
+function toIso(value: Date | string | null | undefined): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value.toISOString();
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function buildIncidentConditions(
   filters: DateRangeFilters & BBoxFilters,
   options?: { requireCoordinates?: boolean },
@@ -58,18 +65,19 @@ export async function listIncidentsForMap(
     .limit(limit);
 
   return rows
-    .filter(
-      (row): row is typeof row & { lat: number; lng: number; reportedAt: Date } =>
-        row.lat !== null && row.lng !== null && row.reportedAt !== null,
-    )
-    .map((row) => ({
-      id: row.id,
-      category: row.category,
-      crimeType: row.crimeType,
-      reportedAt: row.reportedAt.toISOString(),
-      lat: row.lat,
-      lng: row.lng,
-    }));
+    .map((row) => {
+      const reportedAt = toIso(row.reportedAt);
+      if (row.lat === null || row.lng === null || !reportedAt) return null;
+      return {
+        id: row.id,
+        category: row.category,
+        crimeType: row.crimeType,
+        reportedAt,
+        lat: row.lat,
+        lng: row.lng,
+      };
+    })
+    .filter((row): row is Incident => row !== null);
 }
 
 export async function getStats(
@@ -133,6 +141,5 @@ export async function getLastSuccessfulSyncAt(): Promise<string | null> {
     .orderBy(desc(syncRuns.finishedAt))
     .limit(1);
 
-  const finishedAt = rows[0]?.finishedAt;
-  return finishedAt ? finishedAt.toISOString() : null;
+  return toIso(rows[0]?.finishedAt);
 }

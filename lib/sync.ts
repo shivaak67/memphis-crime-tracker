@@ -7,7 +7,7 @@ import { getDb } from "@/lib/db";
 import { fetchAllIncidents, type ArcgisIncident } from "@/lib/arcgis";
 import { incidents, syncRuns } from "@/drizzle/schema";
 
-const UPSERT_BATCH = 200;
+const UPSERT_BATCH = 50;
 
 export type SyncResult = {
   syncRunId: number;
@@ -86,7 +86,12 @@ export async function syncIncidents(options?: {
 
   try {
     const fetched = await fetchAllIncidents({ sinceMs });
-    const rows = fetched.map(toRow);
+    // Postgres rejects one INSERT that updates the same id twice.
+    const byId = new Map<string, ReturnType<typeof toRow>>();
+    for (const incident of fetched) {
+      byId.set(incident.id, toRow(incident));
+    }
+    const rows = [...byId.values()];
     await upsertIncidents(rows);
 
     await db
