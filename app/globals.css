@@ -9,7 +9,7 @@
   --amber: #e0a045;
   --amber-deep: #c4842d;
   --line: rgba(215, 224, 234, 0.14);
-  --map-height: min(64vh, 640px);
+  --map-height: min(56vh, 560px);
   --font-display-fallback: Georgia, "Times New Roman", serif;
   --font-body-fallback: "Segoe UI", sans-serif;
 }
@@ -271,9 +271,8 @@ main {
 
 /* Map becomes the visual focus in the stage */
 .app-stage .map-shell {
-  width: min(100%, 640px);
-  height: auto;
-  aspect-ratio: 1 / 1;
+  --map-height: min(56vh, 560px);
+  width: min(100%, 900px);
   margin-inline: auto;
 }
 
