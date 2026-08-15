@@ -1,5 +1,5 @@
 /**
- * HTML for the map incident popup (readable hierarchy + details).
+ * HTML for the map incident popup (readable hierarchy).
  */
 
 import { memphisAreaName } from "@/lib/memphis-areas";
@@ -23,7 +23,6 @@ export function buildIncidentPopupHtml(incident: IncidentPopupInput): string {
   const crimeType = escapeHtml(incident.crimeType || "Offense type unavailable");
   const { date, time } = formatIncidentDateParts(incident.reportedAt);
   const area = escapeHtml(`Near ${memphisAreaName(incident.lat, incident.lng)}`);
-  const detailsId = `incident-details-${escapeHtml(incident.id).replaceAll(/[^a-zA-Z0-9_-]/g, "")}`;
 
   return `
     <div class="incident-popup">
@@ -49,13 +48,6 @@ export function buildIncidentPopupHtml(incident: IncidentPopupInput): string {
           <span>${area}</span>
         </li>
       </ul>
-      <button type="button" class="incident-popup-details" data-details-target="${detailsId}">
-        View details <span aria-hidden="true">→</span>
-      </button>
-      <div id="${detailsId}" class="incident-popup-extra" hidden>
-        <p><span>Report ID</span> ${escapeHtml(incident.id)}</p>
-        <p><span>Coordinates</span> ${incident.lat.toFixed(4)}, ${incident.lng.toFixed(4)}</p>
-      </div>
     </div>
   `;
 }

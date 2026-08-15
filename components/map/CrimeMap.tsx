@@ -99,6 +99,13 @@ export function CrimeMap({ incidents, loading, error }: Props) {
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
 
+    // Keep hotspots under MapLibre popups/controls (same stacking context).
+    const hotspot = canvasRef.current;
+    if (hotspot) {
+      const canvasContainer = map.getCanvasContainer();
+      canvasContainer.appendChild(hotspot);
+    }
+
     const drawIncidents = (
       ctx: CanvasRenderingContext2D,
       width: number,
@@ -231,7 +238,7 @@ export function CrimeMap({ incidents, loading, error }: Props) {
       }
 
       popupRef.current?.remove();
-      const popup = new Popup({
+      popupRef.current = new Popup({
         offset: 16,
         maxWidth: "300px",
         className: "incident-map-popup",
@@ -249,24 +256,6 @@ export function CrimeMap({ incidents, loading, error }: Props) {
           }),
         )
         .addTo(map);
-
-      popupRef.current = popup;
-
-      const root = popup.getElement();
-      const detailsBtn = root?.querySelector(".incident-popup-details");
-      detailsBtn?.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const targetId = (event.currentTarget as HTMLElement).dataset
-          .detailsTarget;
-        if (!targetId) return;
-        const panel = root?.querySelector(`#${CSS.escape(targetId)}`);
-        if (!(panel instanceof HTMLElement)) return;
-        const open = panel.hasAttribute("hidden");
-        if (open) panel.removeAttribute("hidden");
-        else panel.setAttribute("hidden", "");
-        (event.currentTarget as HTMLElement).classList.toggle("is-open", open);
-      });
     };
 
     map.on("load", () => {
@@ -285,6 +274,11 @@ export function CrimeMap({ incidents, loading, error }: Props) {
     return () => {
       ro.disconnect();
       popupRef.current?.remove();
+      const hotspotCanvas = canvasRef.current;
+      const shell = containerRef.current?.parentElement;
+      if (hotspotCanvas && shell && hotspotCanvas.parentElement !== shell) {
+        shell.appendChild(hotspotCanvas);
+      }
       map.remove();
       mapRef.current = null;
     };

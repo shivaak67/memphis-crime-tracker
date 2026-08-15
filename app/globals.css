@@ -180,6 +180,15 @@ main {
   z-index: 1;
 }
 
+.map-shell .maplibregl-canvas-container {
+  position: absolute;
+  inset: 0;
+}
+
+.map-shell .maplibregl-popup {
+  z-index: 5;
+}
+
 
 
 .map-legend {
@@ -429,49 +438,8 @@ main {
   color: #d64545;
 }
 
-.incident-popup-details {
-  margin-top: 0.9rem;
-  width: 100%;
-  appearance: none;
-  border: 0;
-  border-radius: 10px;
-  background: #1a2430;
-  color: #f4f7fb;
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
-  padding: 0.65rem 0.8rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-}
 
-.incident-popup-details:hover {
-  background: #243140;
-}
 
-.incident-popup-extra {
-  margin-top: 0.7rem;
-  padding-top: 0.65rem;
-  border-top: 1px solid rgba(21, 32, 43, 0.1);
-  display: grid;
-  gap: 0.35rem;
-}
 
-.incident-popup-extra p {
-  margin: 0;
-  font-size: 0.82rem;
-  color: #243040;
-}
 
-.incident-popup-extra span {
-  display: block;
-  color: #6a7b8d;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin-bottom: 0.1rem;
-}
 
