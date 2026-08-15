@@ -47,6 +47,8 @@ export function CrimeMap({ incidents, loading, error }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const popupRef = useRef<Popup | null>(null);
+  const incidentsRef = useRef(incidents);
+  incidentsRef.current = incidents;
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -62,7 +64,7 @@ export function CrimeMap({ incidents, loading, error }: Props) {
               "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
             ],
             tileSize: 256,
-            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            attribution: "&copy; OpenStreetMap &copy; CARTO",
           },
         },
         layers: [
@@ -79,10 +81,12 @@ export function CrimeMap({ incidents, loading, error }: Props) {
 
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
 
-    map.on("load", () => {
+    const ensureSource = () => {
+      if (map.getSource("incidents")) return;
+
       map.addSource("incidents", {
         type: "geojson",
-        data: toGeoJson([]),
+        data: toGeoJson(incidentsRef.current),
         cluster: true,
         clusterMaxZoom: 14,
         clusterRadius: 42,
@@ -134,6 +138,12 @@ export function CrimeMap({ incidents, loading, error }: Props) {
           "circle-stroke-color": "#0c1218",
         },
       });
+    };
+
+    map.on("load", () => {
+      ensureSource();
+      const source = map.getSource("incidents") as GeoJSONSource;
+      source.setData(toGeoJson(incidentsRef.current));
     });
 
     map.on("click", "clusters", async (e: MapLayerMouseEvent) => {
@@ -144,14 +154,18 @@ export function CrimeMap({ incidents, loading, error }: Props) {
       const source = map.getSource("incidents") as GeoJSONSource;
       if (clusterId == null) return;
       const zoom = await source.getClusterExpansionZoom(clusterId);
-      const coordinates = (features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+      const coordinates = (features[0].geometry as GeoJSON.Point)
+        .coordinates as [number, number];
       map.easeTo({ center: coordinates, zoom });
     });
 
     map.on("click", "unclustered", (e: MapLayerMouseEvent) => {
       const feature = e.features?.[0] as MapGeoJSONFeature | undefined;
       if (!feature || feature.geometry.type !== "Point") return;
-      const coordinates = [...feature.geometry.coordinates] as [number, number];
+      const coordinates = [...feature.geometry.coordinates] as [
+        number,
+        number,
+      ];
       const category = String(feature.properties?.category ?? "Unknown");
       const crimeType = String(feature.properties?.crimeType ?? "");
       const reportedAt = feature.properties?.reportedAt
@@ -193,18 +207,21 @@ export function CrimeMap({ incidents, loading, error }: Props) {
     const map = mapRef.current;
     if (!map) return;
 
-    const sync = () => {
-      const source = map.getSource("incidents") as GeoJSONSource | undefined;
-      if (!source) return;
+    const apply = () => {
+      if (!map.getSource("incidents")) {
+        // Style/source not ready yet; load handler will apply incidentsRef.
+        return;
+      }
+      const source = map.getSource("incidents") as GeoJSONSource;
       source.setData(toGeoJson(incidents));
     };
 
-    if (map.isStyleLoaded()) sync();
-    else map.once("load", sync);
+    if (map.isStyleLoaded()) apply();
+    else map.once("load", apply);
   }, [incidents]);
 
   let overlay: string | null = null;
-  if (loading) overlay = "Loading incidents…";
+  if (loading) overlay = "Loading incidents?";
   else if (error) overlay = error;
   else if (incidents.length === 0) overlay = "No incidents for these filters.";
 
