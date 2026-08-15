@@ -50,6 +50,7 @@ export function TrackerApp() {
     groups: ALL_GROUPS,
   });
   const [mapMode, setMapMode] = useState<MapDisplayMode>("incidents");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [series, setSeries] = useState<StatsSeriesPoint[]>([]);
   const [byCategory, setByCategory] = useState<CategoryCount[]>([]);
@@ -130,11 +131,13 @@ export function TrackerApp() {
   }, [query]);
 
   return (
-    <main className="app-shell">
+    <main className={"app-shell" + (sidebarCollapsed ? " is-sidebar-collapsed" : "")}>
       <TrackerSidebar
         filters={filters}
         mapMode={mapMode}
         incidentCount={visibleIncidents.length}
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
         onFiltersChange={setFilters}
         onMapModeChange={setMapMode}
       />

@@ -16,6 +16,8 @@ type Props = {
   filters: SidebarFilters;
   mapMode: MapDisplayMode;
   incidentCount: number;
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
   onFiltersChange: (next: SidebarFilters) => void;
   onMapModeChange: (mode: MapDisplayMode) => void;
 };
@@ -34,6 +36,8 @@ export function TrackerSidebar({
   filters,
   mapMode,
   incidentCount,
+  collapsed,
+  onCollapsedChange,
   onFiltersChange,
   onMapModeChange,
 }: Props) {
@@ -49,104 +53,134 @@ export function TrackerSidebar({
   };
 
   return (
-    <aside className="app-sidebar" aria-label="Filters and map controls">
-      <div className="sidebar-brand">
-        <h1>Memphis Crime Tracker</h1>
+    <aside
+      className={"app-sidebar" + (collapsed ? " is-collapsed" : "")}
+      aria-label="Filters and map controls"
+    >
+      <div className="sidebar-top">
+        {!collapsed ? (
+          <div className="sidebar-brand">
+            <h1>Memphis Crime Tracker</h1>
+          </div>
+        ) : (
+          <p className="sidebar-collapsed-title" aria-hidden>
+            MCT
+          </p>
+        )}
+        <button
+          type="button"
+          className="sidebar-collapse-btn"
+          aria-expanded={!collapsed}
+          aria-controls="sidebar-panel"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={() => onCollapsedChange(!collapsed)}
+        >
+          <span className="sr-only">
+            {collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          </span>
+          <span aria-hidden>{collapsed ? "»" : "«"}</span>
+        </button>
       </div>
 
-      <label className="sidebar-search">
-        <span className="sr-only">Search</span>
-        <input
-          type="search"
-          placeholder="Search an address or area"
-          disabled
-          aria-disabled="true"
-          title="Location search comes in the next feature"
-        />
-      </label>
+      <div id="sidebar-panel" className="sidebar-panel" hidden={collapsed}>
+        <label className="sidebar-search">
+          <span className="sr-only">Search</span>
+          <input
+            type="search"
+            placeholder="Search an address or area"
+            disabled
+            aria-disabled="true"
+            title="Location search comes in the next feature"
+          />
+        </label>
 
-      <div className="sidebar-section">
-        <p className="sidebar-section-label">Date range</p>
-        <p className="sidebar-range-label">
-          {formatRangeLabel(filters.from, filters.to)}
+        <div className="sidebar-section">
+          <p className="sidebar-section-label">Date range</p>
+          <p className="sidebar-range-label">
+            {formatRangeLabel(filters.from, filters.to)}
+          </p>
+          <div className="sidebar-date-inputs">
+            <label>
+              From
+              <input
+                type="date"
+                value={filters.from}
+                onChange={(e) =>
+                  onFiltersChange({ ...filters, from: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              To
+              <input
+                type="date"
+                value={filters.to}
+                onChange={(e) =>
+                  onFiltersChange({ ...filters, to: e.target.value })
+                }
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <p className="sidebar-section-label">Crime type</p>
+          <ul className="sidebar-checkboxes">
+            {CRIME_GROUPS.map((group) => {
+              const checked = filters.groups.includes(group.id);
+              return (
+                <li key={group.id}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleGroup(group.id)}
+                    />
+                    <span
+                      className="sidebar-swatch"
+                      style={{ background: group.color }}
+                      aria-hidden
+                    />
+                    {group.label}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div className="sidebar-section">
+          <p className="sidebar-section-label">Map display</p>
+          <div
+            className="sidebar-radio"
+            role="radiogroup"
+            aria-label="Map display"
+          >
+            <label className={mapMode === "incidents" ? "is-active" : undefined}>
+              <input
+                type="radio"
+                name="map-display"
+                checked={mapMode === "incidents"}
+                onChange={() => onMapModeChange("incidents")}
+              />
+              Incidents
+            </label>
+            <label className={mapMode === "heatmap" ? "is-active" : undefined}>
+              <input
+                type="radio"
+                name="map-display"
+                checked={mapMode === "heatmap"}
+                onChange={() => onMapModeChange("heatmap")}
+              />
+              Heatmap
+            </label>
+          </div>
+        </div>
+
+        <p className="sidebar-count">
+          {incidentCount.toLocaleString()} incidents found
         </p>
-        <div className="sidebar-date-inputs">
-          <label>
-            From
-            <input
-              type="date"
-              value={filters.from}
-              onChange={(e) =>
-                onFiltersChange({ ...filters, from: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            To
-            <input
-              type="date"
-              value={filters.to}
-              onChange={(e) =>
-                onFiltersChange({ ...filters, to: e.target.value })
-              }
-            />
-          </label>
-        </div>
       </div>
-
-      <div className="sidebar-section">
-        <p className="sidebar-section-label">Crime type</p>
-        <ul className="sidebar-checkboxes">
-          {CRIME_GROUPS.map((group) => {
-            const checked = filters.groups.includes(group.id);
-            return (
-              <li key={group.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleGroup(group.id)}
-                  />
-                  <span
-                    className="sidebar-swatch"
-                    style={{ background: group.color }}
-                    aria-hidden
-                  />
-                  {group.label}
-                </label>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      <div className="sidebar-section">
-        <p className="sidebar-section-label">Map display</p>
-        <div className="sidebar-radio" role="radiogroup" aria-label="Map display">
-          <label className={mapMode === "incidents" ? "is-active" : undefined}>
-            <input
-              type="radio"
-              name="map-display"
-              checked={mapMode === "incidents"}
-              onChange={() => onMapModeChange("incidents")}
-            />
-            Incidents
-          </label>
-          <label className={mapMode === "heatmap" ? "is-active" : undefined}>
-            <input
-              type="radio"
-              name="map-display"
-              checked={mapMode === "heatmap"}
-              onChange={() => onMapModeChange("heatmap")}
-            />
-            Heatmap
-          </label>
-        </div>
-      </div>
-
-      <p className="sidebar-count">
-        {incidentCount.toLocaleString()} incidents found
-      </p>
     </aside>
   );
 }

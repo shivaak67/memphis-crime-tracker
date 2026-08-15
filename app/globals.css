@@ -49,6 +49,71 @@ main {
   align-items: stretch;
 }
 
+.app-shell.is-sidebar-collapsed {
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+}
+
+.app-sidebar.is-collapsed {
+  padding: 0.85rem 0.4rem;
+  align-items: center;
+}
+
+.sidebar-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.app-sidebar.is-collapsed .sidebar-top {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sidebar-collapsed-title {
+  margin: 0;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: var(--font-display), var(--font-display-fallback);
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.sidebar-collapse-btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(10, 16, 22, 0.65);
+  color: var(--fog);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.sidebar-collapse-btn:hover {
+  background: rgba(215, 224, 234, 0.1);
+}
+
+.sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar-panel[hidden] {
+  display: none;
+}
+
 .app-sidebar {
   position: sticky;
   top: 0;
