@@ -9,6 +9,11 @@ import {
   type CrimeGroup,
 } from "@/lib/crime-groups";
 import { buildIncidentPopupHtml } from "@/lib/incident-popup";
+import {
+  radiusPixels,
+  type SearchFocus,
+  zoomForRadiusMiles,
+} from "@/lib/location-search";
 import type { Incident } from "@/lib/types";
 
 /**
@@ -28,6 +33,7 @@ type Props = {
   mode?: MapDisplayMode;
   onModeChange?: (mode: MapDisplayMode) => void;
   showViewToggle?: boolean;
+  searchFocus?: SearchFocus | null;
 };
 
 type Point = {
@@ -72,18 +78,21 @@ export function CrimeMap({
   mode: modeProp,
   onModeChange,
   showViewToggle = true,
+  searchFocus = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const popupRef = useRef<Popup | null>(null);
   const pointsRef = useRef<Point[]>([]);
+  const searchFocusRef = useRef<SearchFocus | null>(searchFocus);
   const [internalMode, setInternalMode] = useState<MapDisplayMode>("incidents");
   const mode = modeProp ?? internalMode;
   const modeRef = useRef<MapDisplayMode>(mode);
 
   pointsRef.current = toPoints(incidents);
   modeRef.current = mode;
+  searchFocusRef.current = searchFocus;
 
   const setMode = (next: MapDisplayMode) => {
     if (onModeChange) onModeChange(next);
@@ -208,6 +217,41 @@ export function CrimeMap({
       }
     };
 
+    const drawSearchRadius = (
+      ctx: CanvasRenderingContext2D,
+      width: number,
+      height: number,
+    ) => {
+      const focus = searchFocusRef.current;
+      if (!focus) return;
+
+      const { x, y } = map.project([focus.lng, focus.lat]);
+      if (x < -200 || y < -200 || x > width + 200 || y > height + 200) return;
+
+      const r = radiusPixels(
+        (lngLat) => map.project(lngLat),
+        focus.lat,
+        focus.lng,
+        focus.radiusMiles,
+      );
+
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(56, 189, 248, 0.08)";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.85)";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(56, 189, 248, 0.95)";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#fff";
+      ctx.stroke();
+    };
+
     const draw = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -230,6 +274,7 @@ export function CrimeMap({
       } else {
         drawIncidents(ctx, rect.width, rect.height);
       }
+      drawSearchRadius(ctx, rect.width, rect.height);
     };
 
     const onClick = (e: { point: { x: number; y: number } }) => {
@@ -305,12 +350,28 @@ export function CrimeMap({
     const map = mapRef.current;
     if (!map) return;
     map.triggerRepaint();
-  }, [incidents, mode]);
+  }, [incidents, mode, searchFocus]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !searchFocus) return;
+
+    map.flyTo({
+      center: [searchFocus.lng, searchFocus.lat],
+      zoom: zoomForRadiusMiles(searchFocus.radiusMiles),
+      duration: 1200,
+      essential: true,
+    });
+  }, [searchFocus?.lat, searchFocus?.lng, searchFocus?.radiusMiles]);
 
   let overlay: string | null = null;
   if (loading) overlay = "Loading incidents…";
   else if (error) overlay = error;
-  else if (incidents.length === 0) overlay = "No incidents for these filters.";
+  else if (incidents.length === 0) {
+    overlay = searchFocus
+      ? `No incidents within ${searchFocus.radiusMiles} mi of ${searchFocus.label}.`
+      : "No incidents for these filters.";
+  }
 
   return (
     <section className="map-shell" aria-label="Crime map">
