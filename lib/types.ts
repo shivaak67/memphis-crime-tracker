@@ -26,9 +26,6 @@ export type StatsSummary = {
   total: number;
   topCategory: string | null;
   topArea: string | null;
-  /** Percent change vs an equal-length previous window. Null if unknown. */
-  changePercent: number | null;
-  previousTotal: number;
-};
+};;
 
 export type SyncStatus = "running" | "success" | "failed";

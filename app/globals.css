@@ -443,19 +443,6 @@ main {
   letter-spacing: -0.02em;
 }
 
-.summary-card-value.is-down {
-  color: #7dcea0;
-}
-
-.summary-card-value.is-up {
-  color: #e0a045;
-}
-
-.summary-card-value.is-flat,
-.summary-card-value.is-muted {
-  color: var(--muted);
-}
-
 .map-shell {
   position: relative;
   height: var(--map-height);
