@@ -147,6 +147,73 @@ main {
   font: inherit;
 }
 
+.sidebar-search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.sidebar-radius {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.sidebar-radius select {
+  appearance: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(10, 16, 22, 0.65);
+  color: var(--fog);
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+}
+
+.sidebar-search-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sidebar-search-actions button {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--fog);
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sidebar-search-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sidebar-clear-btn {
+  background: rgba(10, 16, 22, 0.65) !important;
+}
+
+.sidebar-search-active {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.sidebar-search-active strong {
+  color: var(--fog);
+  font-weight: 600;
+}
+
+.sidebar-search-error {
+  margin: 0.45rem 0 0;
+  color: #f87171;
+  font-size: 0.82rem;
+}
+
 .sidebar-search input:disabled {
   opacity: 0.7;
   cursor: not-allowed;

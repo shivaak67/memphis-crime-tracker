@@ -3,6 +3,10 @@
 import { CRIME_GROUPS, type CrimeGroupId } from "@/lib/crime-groups";
 import type { MapDisplayMode } from "@/components/map/CrimeMap";
 import type { FilterState } from "@/components/filters/IncidentFilters";
+import {
+  SEARCH_RADIUS_OPTIONS,
+  type SearchRadiusMiles,
+} from "@/lib/location-search";
 
 /**
  * App sidebar: filters + map display, so the map can own most of the screen.
@@ -16,10 +20,19 @@ type Props = {
   filters: SidebarFilters;
   mapMode: MapDisplayMode;
   incidentCount: number;
+  searchQuery: string;
+  searchRadiusMiles: SearchRadiusMiles;
+  searchLoading: boolean;
+  searchError: string | null;
+  activeSearchLabel: string | null;
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   onFiltersChange: (next: SidebarFilters) => void;
   onMapModeChange: (mode: MapDisplayMode) => void;
+  onSearchQueryChange: (query: string) => void;
+  onSearchRadiusChange: (miles: SearchRadiusMiles) => void;
+  onSearchSubmit: () => void;
+  onSearchClear: () => void;
 };
 
 function formatRangeLabel(from: string, to: string): string {
@@ -36,10 +49,19 @@ export function TrackerSidebar({
   filters,
   mapMode,
   incidentCount,
+  searchQuery,
+  searchRadiusMiles,
+  searchLoading,
+  searchError,
+  activeSearchLabel,
   collapsed,
   onCollapsedChange,
   onFiltersChange,
   onMapModeChange,
+  onSearchQueryChange,
+  onSearchRadiusChange,
+  onSearchSubmit,
+  onSearchClear,
 }: Props) {
   const toggleGroup = (id: CrimeGroupId) => {
     const selected = new Set(filters.groups);
@@ -83,16 +105,64 @@ export function TrackerSidebar({
       </div>
 
       <div id="sidebar-panel" className="sidebar-panel" hidden={collapsed}>
-        <label className="sidebar-search">
-          <span className="sr-only">Search</span>
-          <input
-            type="search"
-            placeholder="Search an address or area"
-            disabled
-            aria-disabled="true"
-            title="Location search comes in the next feature"
-          />
-        </label>
+        <div className="sidebar-section sidebar-search-section">
+          <p className="sidebar-section-label">Location</p>
+          <form
+            className="sidebar-search-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSearchSubmit();
+            }}
+          >
+            <label className="sidebar-search">
+              <span className="sr-only">Search neighborhood, ZIP, or address</span>
+              <input
+                type="search"
+                value={searchQuery}
+                placeholder="Neighborhood, ZIP, or address"
+                disabled={searchLoading}
+                onChange={(e) => onSearchQueryChange(e.target.value)}
+              />
+            </label>
+            <label className="sidebar-radius">
+              Radius
+              <select
+                value={searchRadiusMiles}
+                disabled={searchLoading}
+                onChange={(e) =>
+                  onSearchRadiusChange(Number(e.target.value) as SearchRadiusMiles)
+                }
+              >
+                {SEARCH_RADIUS_OPTIONS.map((miles) => (
+                  <option key={miles} value={miles}>
+                    {miles} mi
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="sidebar-search-actions">
+              <button type="submit" disabled={searchLoading || !searchQuery.trim()}>
+                {searchLoading ? "Searching…" : "Search"}
+              </button>
+              {activeSearchLabel ? (
+                <button type="button" className="sidebar-clear-btn" onClick={onSearchClear}>
+                  Clear
+                </button>
+              ) : null}
+            </div>
+          </form>
+          {activeSearchLabel ? (
+            <p className="sidebar-search-active">
+              Showing incidents within {searchRadiusMiles} mi of{" "}
+              <strong>{activeSearchLabel}</strong>
+            </p>
+          ) : null}
+          {searchError ? (
+            <p className="sidebar-search-error" role="alert">
+              {searchError}
+            </p>
+          ) : null}
+        </div>
 
         <div className="sidebar-section">
           <p className="sidebar-section-label">Date range</p>

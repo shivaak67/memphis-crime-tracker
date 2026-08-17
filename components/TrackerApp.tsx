@@ -11,6 +11,12 @@ import { SummaryCards } from "@/components/summary/SummaryCards";
 import { TrendsCharts } from "@/components/trends/TrendsCharts";
 import { CRIME_GROUPS, crimeGroupIdForCategory } from "@/lib/crime-groups";
 import { daysAgoInput, todayInput } from "@/lib/dates";
+import { findMemphisPlace } from "@/lib/memphis-places";
+import {
+  filterIncidentsWithinRadius,
+  type SearchFocus,
+  type SearchRadiusMiles,
+} from "@/lib/location-search";
 import type {
   CategoryCount,
   Incident,
@@ -59,6 +65,12 @@ export function TrackerApp() {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchRadiusMiles, setSearchRadiusMiles] =
+    useState<SearchRadiusMiles>(2);
+  const [searchFocus, setSearchFocus] = useState<SearchFocus | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const query = useMemo(
     () =>
@@ -76,6 +88,78 @@ export function TrackerApp() {
       allowed.has(crimeGroupIdForCategory(incident.category)),
     );
   }, [incidents, filters.groups]);
+
+  const mapIncidents = useMemo(() => {
+    if (!searchFocus) return visibleIncidents;
+    return filterIncidentsWithinRadius(visibleIncidents, searchFocus);
+  }, [visibleIncidents, searchFocus]);
+
+  const runLocationSearch = async () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    setSearchLoading(true);
+    setSearchError(null);
+
+    try {
+      const preset = findMemphisPlace(query);
+      if (preset) {
+        setSearchFocus({
+          lat: preset.lat,
+          lng: preset.lng,
+          radiusMiles: searchRadiusMiles,
+          label: preset.label,
+        });
+        return;
+      }
+
+      const res = await fetch(`/api/geocode?${new URLSearchParams({ q: query })}`);
+      const json = (await res.json()) as {
+        lat?: number;
+        lng?: number;
+        label?: string;
+        error?: string;
+      };
+
+      if (!res.ok) {
+        throw new Error(json.error ?? "Could not find that location.");
+      }
+
+      if (
+        typeof json.lat !== "number" ||
+        typeof json.lng !== "number" ||
+        !json.label
+      ) {
+        throw new Error("Could not find that location.");
+      }
+
+      setSearchFocus({
+        lat: json.lat,
+        lng: json.lng,
+        radiusMiles: searchRadiusMiles,
+        label: json.label,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setSearchError(message);
+      setSearchFocus(null);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const clearLocationSearch = () => {
+    setSearchQuery("");
+    setSearchFocus(null);
+    setSearchError(null);
+  };
+
+  useEffect(() => {
+    if (!searchFocus) return;
+    setSearchFocus((current) =>
+      current ? { ...current, radiusMiles: searchRadiusMiles } : null,
+    );
+  }, [searchRadiusMiles]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -135,11 +219,20 @@ export function TrackerApp() {
       <TrackerSidebar
         filters={filters}
         mapMode={mapMode}
-        incidentCount={visibleIncidents.length}
+        incidentCount={mapIncidents.length}
+        searchQuery={searchQuery}
+        searchRadiusMiles={searchRadiusMiles}
+        searchLoading={searchLoading}
+        searchError={searchError}
+        activeSearchLabel={searchFocus?.label ?? null}
         collapsed={sidebarCollapsed}
         onCollapsedChange={setSidebarCollapsed}
         onFiltersChange={setFilters}
         onMapModeChange={setMapMode}
+        onSearchQueryChange={setSearchQuery}
+        onSearchRadiusChange={setSearchRadiusMiles}
+        onSearchSubmit={() => void runLocationSearch()}
+        onSearchClear={clearLocationSearch}
       />
 
       <div className="app-stage">
@@ -148,16 +241,20 @@ export function TrackerApp() {
             ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
             : "Waiting for first data sync"}
           {" · "}
-          Showing {visibleIncidents.length.toLocaleString()} map points
+          Showing {mapIncidents.length.toLocaleString()} map points
+          {searchFocus
+            ? ` within ${searchRadiusMiles} mi of ${searchFocus.label}`
+            : ""}
         </p>
 
         <SummaryCards summary={summary} loading={loading} />
 
         <CrimeMap
-          incidents={visibleIncidents}
+          incidents={mapIncidents}
           loading={loading}
           error={error}
           mode={mapMode}
+          searchFocus={searchFocus}
           onModeChange={setMapMode}
           showViewToggle={false}
         />
