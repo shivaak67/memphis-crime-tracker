@@ -86,21 +86,6 @@ export async function listIncidentsForMap(
     .filter((row): row is Incident => row !== null);
 }
 
-async function countIncidents(filters: DateRangeFilters): Promise<number> {
-  const db = getDb();
-  const conditions = buildIncidentConditions({
-    ...filters,
-    minLat: null,
-    maxLat: null,
-    minLng: null,
-    maxLng: null,
-  });
-  const rows = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(incidents)
-    .where(and(...conditions));
-  return Number(rows[0]?.count ?? 0);
-}
 
 async function topActivityArea(filters: DateRangeFilters): Promise<string | null> {
   const db = getDb();
@@ -124,7 +109,7 @@ async function topActivityArea(filters: DateRangeFilters): Promise<string | null
     .from(incidents)
     .where(and(...conditions))
     .orderBy(desc(incidents.reportedAt))
-    .limit(4000);
+    .limit(1500);
 
   const counts = new Map<string, number>();
   for (const row of rows) {
@@ -142,19 +127,6 @@ async function topActivityArea(filters: DateRangeFilters): Promise<string | null
     }
   }
   return best;
-}
-
-function previousWindow(filters: DateRangeFilters): DateRangeFilters {
-  const from = filters.from ?? defaultFromDaysAgo(30);
-  const to = filters.to ?? new Date();
-  const durationMs = Math.max(to.getTime() - from.getTime(), 24 * 60 * 60 * 1000);
-  const prevTo = new Date(from.getTime() - 1);
-  const prevFrom = new Date(from.getTime() - durationMs);
-  return {
-    from: prevFrom,
-    to: prevTo,
-    category: filters.category,
-  };
 }
 
 export async function getStats(
@@ -175,41 +147,32 @@ export async function getStats(
   });
   const whereClause = and(...conditions);
 
-  const seriesRows = await db
-    .select({
-      date: sql<string>`to_char(date_trunc('day', ${incidents.reportedAt}), 'YYYY-MM-DD')`,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(incidents)
-    .where(whereClause)
-    .groupBy(sql`date_trunc('day', ${incidents.reportedAt})`)
-    .orderBy(asc(sql`date_trunc('day', ${incidents.reportedAt})`));
-
-  const categoryRows = await db
-    .select({
-      category: sql<string>`coalesce(${incidents.category}, 'UNKNOWN')`,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(incidents)
-    .where(whereClause)
-    .groupBy(sql`coalesce(${incidents.category}, 'UNKNOWN')`)
-    .orderBy(desc(sql`count(*)`));
+  const [seriesRows, categoryRows, topArea] = await Promise.all([
+    db
+      .select({
+        date: sql<string>`to_char(date_trunc('day', ${incidents.reportedAt}), 'YYYY-MM-DD')`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(incidents)
+      .where(whereClause)
+      .groupBy(sql`date_trunc('day', ${incidents.reportedAt})`)
+      .orderBy(asc(sql`date_trunc('day', ${incidents.reportedAt})`)),
+    db
+      .select({
+        category: sql<string>`coalesce(${incidents.category}, 'UNKNOWN')`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(incidents)
+      .where(whereClause)
+      .groupBy(sql`coalesce(${incidents.category}, 'UNKNOWN')`)
+      .orderBy(desc(sql`count(*)`)),
+    topActivityArea(filters),
+  ]);
 
   const total = categoryRows.reduce((sum, row) => sum + Number(row.count), 0);
   const topCategory =
     categoryRows.find((row) => row.category && row.category !== "UNKNOWN")
       ?.category ?? categoryRows[0]?.category ?? null;
-
-  const [previousTotal, topArea] = await Promise.all([
-    countIncidents(previousWindow(filters)),
-    topActivityArea(filters),
-  ]);
-
-  let changePercent: number | null = null;
-  if (previousTotal > 0) {
-    changePercent = ((total - previousTotal) / previousTotal) * 100;
-  }
-  // If the prior window has no rows (common before a longer sync), leave null.
 
   return {
     series: seriesRows.map((row) => ({
@@ -225,9 +188,6 @@ export async function getStats(
       total,
       topCategory,
       topArea,
-      changePercent:
-        changePercent == null ? null : Math.round(changePercent * 10) / 10,
-      previousTotal,
     },
   };
 }
