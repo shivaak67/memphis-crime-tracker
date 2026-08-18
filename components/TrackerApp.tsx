@@ -63,8 +63,10 @@ export function TrackerApp() {
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<StatsSummary | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [incidentsLoading, setIncidentsLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchRadiusMiles, setSearchRadiusMiles] =
     useState<SearchRadiusMiles>(2);
@@ -164,53 +166,71 @@ export function TrackerApp() {
   useEffect(() => {
     const controller = new AbortController();
 
-    async function load() {
-      setLoading(true);
-      setError(null);
+    async function loadIncidents() {
+      setIncidentsLoading(true);
+      setMapError(null);
 
       try {
-        const [incidentsRes, statsRes] = await Promise.all([
-          fetch(`/api/incidents?${query}`, { signal: controller.signal }),
-          fetch(`/api/stats?${query}`, { signal: controller.signal }),
-        ]);
+        const res = await fetch(`/api/incidents?${query}`, {
+          signal: controller.signal,
+        });
+        const json = (await res.json()) as IncidentsResponse;
 
-        const incidentsJson = (await incidentsRes.json()) as IncidentsResponse;
-        const statsJson = (await statsRes.json()) as StatsResponse;
-
-        if (!incidentsRes.ok) {
+        if (!res.ok) {
           throw new Error(
-            incidentsJson.error ??
+            json.error ??
               "Could not load map incidents. Is the database connected?",
           );
         }
-        if (!statsRes.ok) {
+
+        setIncidents(json.incidents ?? []);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const message = err instanceof Error ? err.message : String(err);
+        setMapError(message);
+        setIncidents([]);
+      } finally {
+        if (!controller.signal.aborted) setIncidentsLoading(false);
+      }
+    }
+
+    async function loadStats() {
+      setStatsLoading(true);
+      setStatsError(null);
+
+      try {
+        const res = await fetch(`/api/stats?${query}`, {
+          signal: controller.signal,
+        });
+        const json = (await res.json()) as StatsResponse;
+
+        if (!res.ok) {
           throw new Error(
-            statsJson.error ??
+            json.error ??
               "Could not load trend stats. Is the database connected?",
           );
         }
 
-        setIncidents(incidentsJson.incidents ?? []);
-        setSeries(statsJson.series ?? []);
-        setByCategory(statsJson.byCategory ?? []);
-        setTotal(statsJson.total ?? 0);
-        setSummary(statsJson.summary ?? null);
-        setLastSyncedAt(statsJson.lastSyncedAt ?? null);
+        setSeries(json.series ?? []);
+        setByCategory(json.byCategory ?? []);
+        setTotal(json.total ?? 0);
+        setSummary(json.summary ?? null);
+        setLastSyncedAt(json.lastSyncedAt ?? null);
       } catch (err) {
         if (controller.signal.aborted) return;
         const message = err instanceof Error ? err.message : String(err);
-        setError(message);
-        setIncidents([]);
+        setStatsError(message);
         setSeries([]);
         setByCategory([]);
         setTotal(0);
         setSummary(null);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) setStatsLoading(false);
       }
     }
 
-    void load();
+    void loadIncidents();
+    void loadStats();
     return () => controller.abort();
   }, [query]);
 
@@ -247,12 +267,12 @@ export function TrackerApp() {
             : ""}
         </p>
 
-        <SummaryCards summary={summary} loading={loading} />
+        <SummaryCards summary={summary} loading={statsLoading} />
 
         <CrimeMap
           incidents={mapIncidents}
-          loading={loading}
-          error={error}
+          loading={incidentsLoading}
+          error={mapError}
           mode={mapMode}
           searchFocus={searchFocus}
           onModeChange={setMapMode}
@@ -263,8 +283,8 @@ export function TrackerApp() {
           series={series}
           byCategory={byCategory}
           total={total}
-          loading={loading}
-          error={error}
+          loading={statsLoading}
+          error={statsError}
         />
 
         <p className="disclaimer">

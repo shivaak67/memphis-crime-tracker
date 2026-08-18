@@ -109,7 +109,7 @@ async function topActivityArea(filters: DateRangeFilters): Promise<string | null
     .from(incidents)
     .where(and(...conditions))
     .orderBy(desc(incidents.reportedAt))
-    .limit(4000);
+    .limit(1500);
 
   const counts = new Map<string, number>();
   for (const row of rows) {
@@ -147,32 +147,32 @@ export async function getStats(
   });
   const whereClause = and(...conditions);
 
-  const seriesRows = await db
-    .select({
-      date: sql<string>`to_char(date_trunc('day', ${incidents.reportedAt}), 'YYYY-MM-DD')`,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(incidents)
-    .where(whereClause)
-    .groupBy(sql`date_trunc('day', ${incidents.reportedAt})`)
-    .orderBy(asc(sql`date_trunc('day', ${incidents.reportedAt})`));
-
-  const categoryRows = await db
-    .select({
-      category: sql<string>`coalesce(${incidents.category}, 'UNKNOWN')`,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(incidents)
-    .where(whereClause)
-    .groupBy(sql`coalesce(${incidents.category}, 'UNKNOWN')`)
-    .orderBy(desc(sql`count(*)`));
+  const [seriesRows, categoryRows, topArea] = await Promise.all([
+    db
+      .select({
+        date: sql<string>`to_char(date_trunc('day', ${incidents.reportedAt}), 'YYYY-MM-DD')`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(incidents)
+      .where(whereClause)
+      .groupBy(sql`date_trunc('day', ${incidents.reportedAt})`)
+      .orderBy(asc(sql`date_trunc('day', ${incidents.reportedAt})`)),
+    db
+      .select({
+        category: sql<string>`coalesce(${incidents.category}, 'UNKNOWN')`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(incidents)
+      .where(whereClause)
+      .groupBy(sql`coalesce(${incidents.category}, 'UNKNOWN')`)
+      .orderBy(desc(sql`count(*)`)),
+    topActivityArea(filters),
+  ]);
 
   const total = categoryRows.reduce((sum, row) => sum + Number(row.count), 0);
   const topCategory =
     categoryRows.find((row) => row.category && row.category !== "UNKNOWN")
       ?.category ?? categoryRows[0]?.category ?? null;
-
-  const topArea = await topActivityArea(filters);
 
   return {
     series: seriesRows.map((row) => ({
